@@ -1,5 +1,4 @@
 <?php
-require "libreria.php"; // per funzioni che verranno eseguite dal server e che possono servire 
 require "credenziali.php"; //per tenere le credenziali di connessione al database
 
 session_start();
@@ -21,7 +20,7 @@ try {
 
     if (count($utentiDB) > 0) { // se esiste almeno un utente con quel nome, lancio un errore
         echo "Nome utente già presente nel database";
-        
+        echo "<br><a href='register.html'>Torna indietro</a>"; // Link per tornare alla pagina di registrazione
     } else {
         if ($pass == $verifica) {
             $hashedPassword = password_hash($pass, PASSWORD_DEFAULT);
@@ -30,16 +29,18 @@ try {
             $sql = "INSERT INTO utenti (nome, password) VALUES (:name, :pass)";
             $stmt = $conn->prepare($sql);
             $stmt->bindParam(':name', $name);
-            $stmt->bindParam(':pass', $hashedPassword);
+            $stmt->bindParam(':pass', $pass);
             $stmt->execute();
             
             echo "Registrazione avvenuta con successo!";
-            header("location: modulo.html"); // reindirizzamento alla pagina di login 
+            header("location: index.php"); // reindirizzamento alla pagina di login 
         } else {
             echo "Errore durante la registrazione, le password non coincidono";
+            echo "<br><a href='register.html'>Torna indietro</a>"; // Link per tornare alla pagina di registrazione
         }
     }
 } catch (PDOException $e) {
     echo "Errore durante la registrazione: " . $e->getMessage();
+    echo "<br><a href='register.html'>Torna indietro</a>"; // Link per tornare alla pagina di registrazione
 }
 ?>

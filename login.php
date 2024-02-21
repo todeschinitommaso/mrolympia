@@ -1,5 +1,4 @@
 <?php
-    require "libreria.php"; // per funzioni che verranno eseguite dal server e che possono servire 
     require "credenziali.php"; //per tenere le credenziali di connessione al database
     //start della sessione e cript della password
     session_start();
@@ -17,9 +16,9 @@
     $stmt->execute();
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($user && hash('sha256', $pass) == $user['password']) { 
+    if ($user && $pass == $user['password']) { 
         $_SESSION["UTENTE"]=$name;
-        header("location:protetta.php");
+        header("location:partecipazioni.php");
         exit();
     }
     else{
