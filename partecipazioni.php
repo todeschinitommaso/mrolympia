@@ -1,5 +1,5 @@
 <?php
-// Includi il file credenziali.php
+// Include il file credenziali.php
 include 'credenziali.php';
 
 // Connessione al database
@@ -8,6 +8,49 @@ $conn = new mysqli($servername, $username, $password, $dbname);
 // Verifica della connessione
 if ($conn->connect_error) {
     die("Connessione fallita: " . $conn->connect_error);
+}
+
+// Verifica se il form di inserimento è stato inviato
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['atleta']) && isset($_POST['competizione']) && isset($_POST['punteggio']) && isset($_POST['posizione'])) {
+    // Recupera i valori inviati dal form
+    $atleta = $_POST['atleta'];
+    $competizione = $_POST['competizione'];
+    $punteggio = $_POST['punteggio'];
+    $posizione = $_POST['posizione'];
+
+    // Verifica se l'atleta e la competizione esistono nel database
+    $stmt_check = $conn->prepare("SELECT id FROM ATLETI WHERE nome = ?");
+    $stmt_check->bind_param("s", $atleta);
+    $stmt_check->execute();
+    $stmt_check->store_result();
+    if ($stmt_check->num_rows == 0) {
+        die("Atleta non trovato nel database.");
+    }
+    $stmt_check->close();
+
+    $stmt_check = $conn->prepare("SELECT id FROM COMPETIZIONI WHERE nome = ?");
+    $stmt_check->bind_param("s", $competizione);
+    $stmt_check->execute();
+    $stmt_check->store_result();
+    if ($stmt_check->num_rows == 0) {
+        die("Competizione non trovata nel database.");
+    }
+    $stmt_check->close();
+
+    // Prepara e esegui la query per inserire i dati nella tabella PARTECIPAZIONE
+    $stmt = $conn->prepare("INSERT INTO PARTECIPAZIONE (id_atleta, id_competizione, punteggio, posizione) VALUES ((SELECT id FROM ATLETI WHERE nome = ?), (SELECT id FROM COMPETIZIONI WHERE nome = ?), ?, ?)");
+    $stmt->bind_param("ssii", $atleta, $competizione, $punteggio, $posizione);
+
+    $stmt->close();
+}
+
+// Gestione dell'eliminazione dei dati
+if(isset($_POST['elimina']) && isset($_POST['id_partecipazione'])) {
+    $id_partecipazione = $_POST['id_partecipazione'];
+    $stmt_delete = $conn->prepare("DELETE FROM PARTECIPAZIONE WHERE id = ?");
+    $stmt_delete->bind_param("i", $id_partecipazione);
+
+    $stmt_delete->close();
 }
 
 // Query per ottenere tutte le competizioni disponibili
@@ -62,27 +105,26 @@ echo "<!DOCTYPE html>
     }
     
     form {
-        width: 100%;
-        margin-top: 20px;
-        background-color: #fff;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        display: inline; /* Modifica per renderlo inline */
     }
     
-    form label {
-        margin-bottom: 8px;
+    form input[type='submit'] {
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        color: blue;
+        text-decoration: underline;
+        padding: 0;
     }
     
-    form select, form input {
-        width: 100%;
-        padding: 8px;
-        margin-bottom: 16px;
-        box-sizing: border-box;
+    form input[type='submit']:hover {
+        color: red;
     }
+    
+    form input[type='submit']:focus {
+        outline: none;
+    }
+    
     </style>
 </head>
 <body>";
@@ -104,7 +146,7 @@ echo "</form>";
 echo "</div>";
 
 // Query per selezionare i dati dalla tabella PARTECIPAZIONE e ottenere i nomi degli atleti e delle competizioni
-$sql = "SELECT ATLETI.nome AS atleta, COMPETIZIONI.nome AS competizione, PARTECIPAZIONE.punteggio, PARTECIPAZIONE.posizione
+$sql = "SELECT ATLETI.nome AS atleta, COMPETIZIONI.nome AS competizione_nome, PARTECIPAZIONE.punteggio, PARTECIPAZIONE.posizione, PARTECIPAZIONE.id AS id_partecipazione
         FROM PARTECIPAZIONE
         INNER JOIN ATLETI ON PARTECIPAZIONE.id_atleta = ATLETI.id
         INNER JOIN COMPETIZIONI ON PARTECIPAZIONE.id_competizione = COMPETIZIONI.id";
@@ -118,17 +160,25 @@ if (isset($_GET['competizione']) && $_GET['competizione'] != 'tutte') {
 $result = $conn->query($sql);
 
 // Tabella Partecipazioni
-echo "<table><tr><th>Atleta</th><th>Competizione</th><th>Punteggio</th><th>Posizione</th></tr>";
-// Output dei dati di ogni riga
-while($row = $result->fetch_assoc()) {
-    echo "<tr><td><a href='atleta.php?atleta=".urlencode($row['atleta'])."'>".$row["atleta"]."</a></td><td>".$row["competizione"]."</td><td>".$row["punteggio"]."</td><td>".$row["posizione"]."</td></tr>";
+echo "<table><tr><th>Atleta</th><th>Competizione</th><th>Punteggio</th><th>Posizione</th><th>Azioni</th></tr>";
+
+// Verifica se $result è definito prima di utilizzarlo
+if (isset($result)) {
+    // Output dei dati di ogni riga
+    while($row = $result->fetch_assoc()) {
+        echo "<tr><td><a href='atleta.php?atleta=".urlencode($row['atleta'])."'>".$row["atleta"]."</a></td><td>".$row["competizione_nome"]."</td><td>".$row["punteggio"]."</td><td>".$row["posizione"]."</td>";
+        
+        // Aggiungi un pulsante "Elimina" per ogni riga
+        echo "<td><form method='POST'><input type='hidden' name='id_partecipazione' value='".$row["id_partecipazione"]."'><input type='submit' name='elimina' value='Elimina'></form></td></tr>";
+    }
 }
+
 echo "</table>";
 
 // Form per l'inserimento di dati
 echo "<div style='margin-top: 20px;'>";
 echo "<h3>Inserisci nuova partecipazione</h3>";
-echo "<form action='' method='POST'>"; // Rimuovere l'action per inviare al file corrente
+echo "<form method='POST'>";
 echo "<label for='atleta'>Atleta:</label>";
 echo "<select name='atleta'>";
 // Opzioni per gli atleti
@@ -162,35 +212,6 @@ echo "</div>";
 // Fine del documento HTML
 echo "</body>
 </html>";
-
-// Gestione dell'inserimento dei dati
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $atleta = $_POST['atleta'];
-    $competizione = $_POST['competizione'];
-    $punteggio = $_POST['punteggio'];
-    $posizione = $_POST['posizione'];
-
-    // Query per l'inserimento dei dati nella tabella PARTECIPAZIONE utilizzando statement preparati
-    $stmt = $conn->prepare("INSERT INTO PARTECIPAZIONE (id_atleta, id_competizione, punteggio, posizione) VALUES (
-        (SELECT id FROM ATLETI WHERE nome = ?),
-        (SELECT id FROM COMPETIZIONI WHERE nome = ?),
-        ?,
-        ?
-    )");
-
-    // Associazione dei parametri
-    $stmt->bind_param("ssii", $atleta, $competizione, $punteggio, $posizione);
-
-    // Esecuzione della query
-    if ($stmt->execute()) {
-        echo "Inserimento avvenuto con successo.";
-    } else {
-        echo "Errore nell'inserimento: " . $stmt->error;
-    }
-
-    // Chiudi lo statement
-    $stmt->close();
-}
 
 // Chiudi la connessione al database
 $conn->close();
