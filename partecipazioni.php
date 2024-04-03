@@ -1,4 +1,6 @@
 <?php
+session_start();
+if(isset($_SESSION["UTENTE"])) {
 // Include il file credenziali.php
 include 'credenziali.php';
 
@@ -340,4 +342,10 @@ echo "</body>
 
 // Chiudi la connessione al database
 $conn->close();
+}
+
+else{
+    header("location:index.php");
+    session_abort();
+}
 ?>

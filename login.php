@@ -18,6 +18,7 @@
 
     if ($user && $pass == $user['password']) { 
         $_SESSION["UTENTE"]=$name;
+        session_start();
         header("location:partecipazioni.php");
         exit();
     }

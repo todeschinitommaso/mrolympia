@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Atleta</title>
+    <a href="partecipazioni.php" class="btn">INDIETRO</a>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -16,6 +18,18 @@
             height: 100vh;
             position: relative;
         }
+
+        .btn {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        font-size: 16px;
+}
 
         #filtroCompetizioni {
             position: absolute;
@@ -72,6 +86,8 @@
 </head>
 <body>
 <?php
+session_start();
+if(isset($_SESSION["UTENTE"])) {
 // Includi il file credenziali.php
 include 'credenziali.php';
 
@@ -108,6 +124,11 @@ if (isset($_GET['atleta'])) {
     echo "Nome dell'atleta non specificato.";
 }
 
+}
+else{
+    header("location:index.php");
+    session_abort();
+}
 // Chiudi la connessione al database
 $conn->close();
 ?>
